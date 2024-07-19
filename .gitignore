@@ -1,5 +1,5 @@
 /build
-.vscode/settings.json
+.vscode
 /.vs
 .cache
 .idea
