@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL Emscripten)
+if("${CMAKE_SYSTEM_NAME}" STREQUAL Emscripten)
         option(LUAU_BUILD_WEB "Build Web module" on)
 endif()
 
