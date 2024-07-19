@@ -449,7 +449,6 @@ lsp::InitializeResult LanguageServer::onInitialize(const lsp::InitializeParams& 
         }
     }
 
-    // yyykr todo: need to handle workspace setup.
     // Configure workspaces
     if (params.workspaceFolders.has_value())
     {

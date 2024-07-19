@@ -113,6 +113,8 @@ public:
         return false;
     }
 
+    virtual std::string getName() { return "LSPPlatform"; }
+
     static std::unique_ptr<LSPPlatform> getPlatform(
         const ClientConfiguration& config, WorkspaceFileResolver* fileResolver, WorkspaceFolder* workspaceFolder = nullptr);
 

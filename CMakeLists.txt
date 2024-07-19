@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.19)
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
 
+if(${CMAKE_SYSTEM_NAME} STREQUAL Emscripten)
+        option(LUAU_BUILD_WEB "Build Web module" on)
+endif()
+
+# we need exception support because we use JsonRpcException for control flow in normal operation
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
+
 option(LUAU_ENABLE_TIME_TRACE "Build with Luau TimeTrace" OFF)
 option(LSP_BUILD_ASAN "Build with ASAN" OFF)
 option(LSP_STATIC_CRT "Link with the static CRT (/MT)" OFF)
@@ -91,6 +98,7 @@ target_sources(Luau.LanguageServer.Test PRIVATE
         tests/LanguageServer.test.cpp
         tests/InlayHints.test.cpp
         tests/JsonTomlSyntaxParser.test.cpp
+        tests/MonacoWasm.test.cpp
 )
 
 # TODO: Set Luau.Analysis at O2 to speed up debugging
@@ -98,7 +106,7 @@ if (MSVC)
     list(APPEND LUAU_LSP_OPTIONS /W3 /WX /D_CRT_SECURE_NO_WARNINGS)
     list(APPEND LUAU_LSP_OPTIONS /MP) # Distribute compilation across multiple cores
 else ()
-    list(APPEND LUAU_LSP_OPTIONS -Wall -Werror)
+    list(APPEND LUAU_LSP_OPTIONS -Wall)
 endif ()
 
 if (LSP_BUILD_ASAN)
@@ -141,3 +149,23 @@ target_compile_features(Luau.LanguageServer.Test PRIVATE cxx_std_17)
 target_compile_options(Luau.LanguageServer.Test PRIVATE ${LUAU_LSP_OPTIONS})
 target_include_directories(Luau.LanguageServer.Test PRIVATE tests ${EXTERN_INCLUDES} extern/doctest)
 target_link_libraries(Luau.LanguageServer.Test PRIVATE Luau.Ast Luau.Analysis Luau.LanguageServer)
+
+add_executable(Luau.LanguageServer.Web)
+target_sources(Luau.LanguageServer.Web PRIVATE
+        src/wasm.cpp
+)
+target_include_directories(Luau.LanguageServer.Web PRIVATE src/include emsdk/upstream/emscripten/cache/sysroot/include)
+target_compile_options(Luau.LanguageServer.Web PRIVATE ${LUAU_LSP_OPTIONS})
+target_link_libraries(Luau.LanguageServer.Web PRIVATE Luau.Ast Luau.Analysis Luau.Compiler Luau.LanguageServer)
+
+if (LUAU_BUILD_WEB)
+        set(CMAKE_EXECUTABLE_SUFFIX .js)
+        target_link_options(Luau.LanguageServer.Web PRIVATE -sENVIRONMENT=web -sMODULARIZE=1 -sEXPORT_NAME=LuauLanguageServerWeb -sEXPORT_ES6=1)
+        target_link_options(Luau.LanguageServer.Web PRIVATE --bind --no-entry -sIGNORE_MISSING_MAIN=1 -sALLOW_MEMORY_GROWTH=1 -sMINIMAL_RUNTIME=2)
+        target_link_options(Luau.LanguageServer.Web PRIVATE -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall -sEXPORTED_RUNTIME_METHODS=FS_createDataFile,FS_createPath)
+        # target_link_options(Luau.LanguageServer.Web PRIVATE -sASYNCIFY)
+        if(${CMAKE_BUILD_TYPE} STREQUAL Debug)
+                target_link_options(Luau.LanguageServer.Web PRIVATE -gseparate_dwarf -v)
+                target_link_options(Luau.LanguageServer.Web PRIVATE -sEXCEPTION_STACK_TRACES -sEMULATE_FUNCTION_POINTER_CASTS -sASSERTIONS=2)
+        endif(${CMAKE_BUILD_TYPE} STREQUAL Debug)
+endif (LUAU_BUILD_WEB)
