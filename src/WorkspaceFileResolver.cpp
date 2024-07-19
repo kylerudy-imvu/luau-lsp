@@ -12,13 +12,12 @@ Luau::ModuleName WorkspaceFileResolver::getModuleName(const Uri& name) const
     if (name.scheme != "file")
         return name.toString();
 
-    auto fsPath = name.fsPath().generic_string();
-    if (auto virtualPath = platform->resolveToVirtualPath(fsPath))
+    if (auto virtualPath = platform->resolveToVirtualPath(name.toString()))
     {
         return *virtualPath;
     }
 
-    return fsPath;
+    return name.fsPath().generic_string();
 }
 
 std::string WorkspaceFileResolver::normalisedUriString(const lsp::DocumentUri& uri)
@@ -46,7 +45,7 @@ const TextDocument* WorkspaceFileResolver::getTextDocument(const lsp::DocumentUr
 const TextDocument* WorkspaceFileResolver::getTextDocumentFromModuleName(const Luau::ModuleName& name) const
 {
     // Handle untitled: files
-    if (Luau::startsWith(name, "untitled:"))
+    if (Luau::startsWith(name, "untitled:") || Luau::startsWith(name, "inmemory:"))
         return getTextDocument(Uri::parse(name));
 
     if (auto filePath = platform->resolveToRealPath(name))

@@ -17,6 +17,13 @@ lsp::DocumentDiagnosticReport WorkspaceFolder::documentDiagnostics(const lsp::Do
 
     auto moduleName = fileResolver.getModuleName(params.textDocument.uri);
     auto textDocument = fileResolver.getTextDocument(params.textDocument.uri);
+
+    if(!textDocument) {
+        client->sendLogMessage(lsp::MessageType::Error, "Failing diagnostics on " + moduleName + " with missing textDocument");
+    } else if(!frontend.getSourceModule(moduleName)) {
+        client->sendLogMessage(lsp::MessageType::Error, "Failing diagnostics on " + moduleName + " with missing sourceModule");
+    }
+
     if (!textDocument)
         return report; // Bail early with empty report - file was likely closed
 
@@ -45,14 +52,22 @@ lsp::DocumentDiagnosticReport WorkspaceFolder::documentDiagnostics(const lsp::Do
         }
         else
         {
-            auto fileName = platform->resolveToRealPath(error.moduleName);
-            if (!fileName || isIgnoredFile(*fileName, config))
-                continue;
             auto textDocument = fileResolver.getTextDocumentFromModuleName(error.moduleName);
+            auto fileName = platform->resolveToRealPath(error.moduleName);
             auto diagnostic = createTypeErrorDiagnostic(error, &fileResolver, textDocument);
-            auto uri = textDocument ? textDocument->uri() : Uri::file(*fileName);
-            auto& currentDiagnostics = relatedDiagnostics[uri.toString()];
-            currentDiagnostics.emplace_back(diagnostic);
+
+            // textDocument takes priority over fileName, unless fileName resolves and is known to be ignored
+            if (fileName && isIgnoredFile(*fileName, config)) {
+                continue;
+            }
+
+            if(textDocument) {
+                relatedDiagnostics[textDocument->uri().toString()].emplace_back(diagnostic);
+            } else if(fileName) {
+                relatedDiagnostics[Uri::parse(*fileName).toString()].emplace_back(diagnostic);
+            } else {
+                continue;
+            }
         }
     }
 
