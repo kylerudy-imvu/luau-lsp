@@ -3,6 +3,7 @@
 #include "LSP/ClientConfiguration.hpp"
 #include "LSP/Workspace.hpp"
 #include "Platform/RobloxPlatform.hpp"
+#include "Platform/MonacoPlatform.hpp"
 
 #include <memory>
 
@@ -17,7 +18,8 @@ std::unique_ptr<LSPPlatform> LSPPlatform::getPlatform(
 {
     if (config.types.roblox && config.platform.type == LSPPlatformConfig::Roblox)
         return std::make_unique<RobloxPlatform>(fileResolver, workspaceFolder);
-
+    else if(config.platform.type == LSPPlatformConfig::Monaco)
+        return std::make_unique<MonacoPlatform>(fileResolver, workspaceFolder);
     return std::make_unique<LSPPlatform>(fileResolver, workspaceFolder);
 }
 
