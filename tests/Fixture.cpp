@@ -8,16 +8,29 @@
 
 #include "doctest.h"
 #include <string_view>
+#include <vector>
+#include <string>
+#include <filesystem>
+#include <memory>
 
 static const char* mainModuleName = "MainModule";
 
+std::shared_ptr<Client> Fixture::makeClient() {
+    const char* standardDefinitionsFile = "./tests/testdata/standard_definitions.d.luau";
+    const auto defFilePath = std::filesystem::path(standardDefinitionsFile);
+    const auto pathsPtr = std::make_shared<std::vector<std::filesystem::path>>(std::vector<std::filesystem::path>{defFilePath});
+    const auto docsVec = std::vector<std::filesystem::path>();
+    return std::make_shared<Client>(
+        std::make_shared<ServerIOStd>(),
+        pathsPtr,
+        docsVec);
+}
+
 Fixture::Fixture()
-    : client(std::make_shared<Client>(Client{}))
+    : client(makeClient())
     , workspace(client, "$TEST_WORKSPACE", Uri(), std::nullopt)
 {
     workspace.fileResolver.defaultConfig.mode = Luau::Mode::Strict;
-    client->definitionsFiles.push_back("./tests/testdata/standard_definitions.d.luau");
-
     workspace.initialize();
 
     ClientConfiguration config;

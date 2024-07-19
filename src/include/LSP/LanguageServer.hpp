@@ -13,7 +13,6 @@
 using json = nlohmann::json;
 using namespace json_rpc;
 using WorkspaceFolderPtr = std::shared_ptr<WorkspaceFolder>;
-using ClientPtr = std::shared_ptr<Client>;
 
 #define JSON_REQUIRED_PARAMS(params, method) \
     (!(params) ? throw json_rpc::JsonRpcException(lsp::ErrorCode::InvalidParams, "params not provided for " method) : (params).value())
@@ -36,7 +35,7 @@ private:
     // A "in memory" workspace folder which doesn't actually have a root.
     // Any files which aren't part of a workspace but are opened will be handled here.
     // This is common if the client has not yet opened a folder
-    ClientPtr client;
+    std::shared_ptr<Client> client;
     std::optional<Luau::Config> defaultConfig;
     WorkspaceFolderPtr nullWorkspace;
     std::vector<WorkspaceFolderPtr> workspaceFolders;
@@ -44,8 +43,8 @@ private:
     std::vector<json_rpc::JsonRpcMessage> configPostponedMessages;
 
 public:
-    explicit LanguageServer(ClientPtr aClient, std::optional<Luau::Config> aDefaultConfig)
-        : client(std::move(aClient))
+    explicit LanguageServer(std::shared_ptr<Client> aClient, std::optional<Luau::Config> aDefaultConfig)
+        : client(aClient)
         , defaultConfig(std::move(aDefaultConfig))
         , nullWorkspace(std::make_shared<WorkspaceFolder>(client, "$NULL_WORKSPACE", Uri(), defaultConfig))
     {
@@ -56,10 +55,9 @@ public:
     /// Finds the workspace which the file belongs to.
     /// If no workspace is found, the file is attached to the null workspace
     WorkspaceFolderPtr findWorkspace(const lsp::DocumentUri& file);
-
     void onRequest(const id_type& id, const std::string& method, std::optional<json> params);
     void onNotification(const std::string& method, std::optional<json> params);
-    void processInputLoop();
+    void processInput(const std::string& jsonInput);
     bool requestedShutdown();
 
     // Dispatch handlers
@@ -95,6 +93,8 @@ private:
     lsp::DocumentDiagnosticReport documentDiagnostic(const lsp::DocumentDiagnosticParams& params);
     lsp::PartialResponse<lsp::WorkspaceDiagnosticReport> workspaceDiagnostic(const lsp::WorkspaceDiagnosticParams& params);
     Response onShutdown([[maybe_unused]] const id_type& id);
+
+    void checkAndDispatchSuspendedRequests();
 
 private:
     bool isInitialized = false;

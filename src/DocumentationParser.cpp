@@ -36,12 +36,12 @@ std::string convertHtmlToMarkdown(const std::string& input)
 }
 
 
-void parseDocumentation(
-    const std::vector<std::filesystem::path>& documentationFiles, Luau::DocumentationDatabase& database, const std::shared_ptr<Client>& client)
+const void parseDocumentation(
+    const std::vector<std::filesystem::path>& documentationFiles, Luau::DocumentationDatabase& database, const ServerIO & io)
 {
     if (documentationFiles.empty())
     {
-        client->sendLogMessage(lsp::MessageType::Warning, "No documentation file given. Documentation will not be provided");
+        io.sendLogMessage(lsp::MessageType::Warning, "No documentation file given. Documentation will not be provided");
         return;
     }
 
@@ -105,16 +105,16 @@ void parseDocumentation(
             }
             catch (const std::exception& e)
             {
-                client->sendLogMessage(lsp::MessageType::Error,
-                    "Failed to load documentation database for " + resolvedFilePath.generic_string() + ": " + std::string(e.what()));
-                client->sendWindowMessage(lsp::MessageType::Error, "Failed to load documentation database: " + std::string(e.what()));
+                io.sendLogMessage(lsp::MessageType::Error,
+                    "Failed to load documentation database for " + documentationFile.generic_string() + ": " + std::string(e.what()));
+                io.sendWindowMessage(lsp::MessageType::Error, "Failed to load documentation database: " + std::string(e.what()));
             }
         }
         else
         {
-            client->sendLogMessage(lsp::MessageType::Error,
-                "Failed to read documentation file for " + resolvedFilePath.generic_string() + ". Documentation will not be provided");
-            client->sendWindowMessage(lsp::MessageType::Error, "Failed to read documentation file. Documentation will not be provided");
+            io.sendLogMessage(lsp::MessageType::Error,
+                "Failed to read documentation file for " + documentationFile.generic_string() + ". Documentation will not be provided");
+            io.sendWindowMessage(lsp::MessageType::Error, "Failed to read documentation file. Documentation will not be provided");
         }
     }
 }
